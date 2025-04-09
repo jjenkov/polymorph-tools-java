@@ -3,7 +3,7 @@ package com.plmph.pde;
 public class PdeFieldLengthSpecs {
 
 
-    public static byte[] defaultPinLengthEncodings() {
+    public static byte[] defaultPdeLengthEncodings() {
         byte[] encodings = new byte[256];
 
         encodings[PdeFieldTypes.BOOLEAN_NULL]  = 0x00;  // 0 length bytes, 0 value length (1 byte fields)

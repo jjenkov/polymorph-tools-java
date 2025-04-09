@@ -25,7 +25,7 @@ public class PdeReader {
     public int fieldValueLength  = 0;  // number of value  bytes for this field.
 
     public PdeReader(){
-        this.lengthSpecs = PdeFieldLengthSpecs.defaultPinLengthEncodings();
+        this.lengthSpecs = PdeFieldLengthSpecs.defaultPdeLengthEncodings();
         this.intoIndexStack = new long[64];
     }
 
