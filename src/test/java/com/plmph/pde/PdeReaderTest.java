@@ -24,6 +24,15 @@ public class PdeReaderTest {
         writer.writeInt(789);
         writer.writeInt(383_383L);
 
+        //todo test writing + reading of float null
+
+        //todo test writing + reading of float32
+        writer.writeFloat32(123.45f);
+
+
+        //todo test writing + reading of float64
+        writer.writeFloat64(12345.6789d);
+
         writer.writeBytes(null);
         writer.writeBytes(new byte[]{ 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14});
         writer.writeBytes(new byte[]{ 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15});
@@ -63,23 +72,44 @@ public class PdeReaderTest {
         assertEquals(1, reader.fieldValueLength);
         assertEquals(0, reader.fieldLengthLength);
         assertEquals(123, reader.readInt());
+        assertEquals(123, reader.readIntObj());
 
         reader.next();
         assertEquals(PdeFieldTypes.INT_POS_4_BYTES, reader.fieldType);
         assertEquals(4, reader.fieldValueLength);
         assertEquals(0, reader.fieldLengthLength);
         assertEquals(123_456_789L, reader.readInt());
+        assertEquals(123_456_789L, reader.readIntObj());
 
         reader.next();
         assertEquals(PdeFieldTypes.INT_POS_2_BYTES, reader.fieldType);
         assertEquals(0, reader.fieldLengthLength);
         assertEquals(2, reader.fieldValueLength);
+        assertEquals(789, reader.readInt());
+        assertEquals(789, reader.readIntObj());
+
 
         reader.next();
         assertEquals(PdeFieldTypes.INT_POS_3_BYTES, reader.fieldType);
         assertEquals(0, reader.fieldLengthLength);
         assertEquals(3, reader.fieldValueLength);
         assertEquals(383_383L, reader.readInt());
+        assertEquals(383_383L, reader.readIntObj());
+
+        reader.next();
+        assertEquals(PdeFieldTypes.FLOAT_4_BYTES, reader.fieldType);
+        assertEquals(0, reader.fieldLengthLength);
+        assertEquals(4, reader.fieldValueLength);
+        assertEquals(123.45f, reader.readFloat32());
+        assertEquals(123.45f, reader.readFloat32Obj());
+
+        reader.next();
+        assertEquals(PdeFieldTypes.FLOAT_8_BYTES, reader.fieldType);
+        assertEquals(0, reader.fieldLengthLength);
+        assertEquals(8, reader.fieldValueLength);
+        assertEquals(12345.6789d, reader.readFloat64());
+        assertEquals(12345.6789d, reader.readFloat64Obj());
+
 
         byte[] readBuf = new byte[1024];
         reader.next();

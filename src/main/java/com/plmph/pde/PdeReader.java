@@ -145,7 +145,7 @@ public class PdeReader {
             return null;
         }
         long value = 0;
-        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset;) {
+        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset + FIELD_TYPE_BYTE_COUNT;) {
             value = (value << 8) + (0xFF & source[--tempOffset]);
         }
         if(this.fieldType >= PdeFieldTypes.INT_NEG_1_BYTES && this.fieldType <= PdeFieldTypes.INT_NEG_8_BYTES){
@@ -155,11 +155,19 @@ public class PdeReader {
     }
 
     public float readFloat32() {
+        long value = 0;
+        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset + FIELD_TYPE_BYTE_COUNT;) {
+            value = (value << 8) + (0xFF & source[--tempOffset]);
+        }
+        return Float.intBitsToFloat((int) (0xFFFFFFFF & value));
+
+        /*
         int value = 0;
         for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset;) {
             value = (value << 8) + (0xFF & source[--tempOffset]);
         }
         return Float.intBitsToFloat(value);
+        */
     }
 
     public Float readFloat32Obj() {
@@ -167,7 +175,7 @@ public class PdeReader {
             return null;
         }
         int value = 0;
-        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset;) {
+        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset + FIELD_TYPE_BYTE_COUNT;) {
             value = (value << 8) + (0xFF & source[--tempOffset]);
         }
         return Float.intBitsToFloat(value);
@@ -175,7 +183,7 @@ public class PdeReader {
 
     public double readFloat64() {
         long value = 0;
-        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset;) {
+        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset + FIELD_TYPE_BYTE_COUNT;) {
             value = (value << 8) + (0xFF & source[--tempOffset]);
         }
         return Double.longBitsToDouble(value);
@@ -186,7 +194,7 @@ public class PdeReader {
             return null;
         }
         long value = 0;
-        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset;) {
+        for (int tempOffset = offset + FIELD_TYPE_BYTE_COUNT + this.fieldValueLength; tempOffset > offset + FIELD_TYPE_BYTE_COUNT;) {
             value = (value << 8) + (0xFF & source[--tempOffset]);
         }
         return Double.longBitsToDouble(value);
