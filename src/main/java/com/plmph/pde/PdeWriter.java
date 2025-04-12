@@ -69,8 +69,14 @@ public class PdeWriter {
             dest[offset++] = PdeFieldTypes.INT_NULL;
         } else {
             int integerValue = value.intValue();
+            int baseFieldTypeCode = PdeFieldTypes.INT_NULL;
+            if(integerValue < 0){
+                baseFieldTypeCode = PdeFieldTypes.INT_POS_8_BYTES;
+                integerValue = (-integerValue) -1; // -1 becomes 0. -2 becomes 1 etc.
+            }
+
             int length = PdeUtil.byteLengthOfInt32Value(integerValue);
-            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.INT_NULL + length));
+            dest[offset++] = (byte) (0xFF & (baseFieldTypeCode + length));
 
             for(int i=0, n=length*8; i < n; i+=8){
                 dest[offset++] = (byte) (0xFF & (value >> i));
@@ -83,8 +89,13 @@ public class PdeWriter {
             dest[offset++] = PdeFieldTypes.INT_NULL;
         } else {
             int longValue = value.intValue();
+            int baseFieldTypeCode = PdeFieldTypes.INT_NULL;
+            if(longValue < 0){
+                baseFieldTypeCode = PdeFieldTypes.INT_POS_8_BYTES;
+                longValue = (-longValue) -1; // -1 becomes 0. -2 becomes 1 etc.
+            }
             int length = PdeUtil.byteLengthOfInt64Value(longValue);
-            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.INT_NULL + length));
+            dest[offset++] = (byte) (0xFF & (baseFieldTypeCode + length));
 
             for(int i=0, n=length*8; i < n; i+=8){
                 dest[offset++] = (byte) (0xFF & (value >> i));
@@ -93,20 +104,30 @@ public class PdeWriter {
     }
 
 
-    //todo add functionality for negative ints
     public void writeInt(int value) {
+        int baseFieldTypeCode = PdeFieldTypes.INT_NULL;
+        if(value < 0){
+            baseFieldTypeCode = PdeFieldTypes.INT_POS_8_BYTES;
+            value = (-value) -1; // -1 becomes 0. -2 becomes 1 etc.
+        }
+
         int length = PdeUtil.byteLengthOfInt32Value(value);
-        dest[offset++] = (byte) (0xFF & (PdeFieldTypes.INT_NULL + length));
+        dest[offset++] = (byte) (0xFF & (baseFieldTypeCode + length));
 
         for(int i=0, n=length*8; i < n; i+=8){
             dest[offset++] = (byte) (0xFF & (value >> i));
         }
     }
 
-    //todo add functionality for negative ints
     public void writeInt(long value) {
+        int baseFieldTypeCode = PdeFieldTypes.INT_NULL;
+        if(value < 0){
+            baseFieldTypeCode = PdeFieldTypes.INT_POS_8_BYTES;
+            value = (-value) -1; // -1 becomes 0. -2 becomes 1 etc.
+        }
+
         int length = PdeUtil.byteLengthOfInt64Value(value);
-        dest[offset++] = (byte) (0xFF & (PdeFieldTypes.INT_NULL + length));
+        dest[offset++] = (byte) (0xFF & (baseFieldTypeCode + length));
 
         for(int i=0, n=length*8; i < n; i+=8){
             dest[offset++] = (byte) (0xFF & (value >> i));
@@ -119,6 +140,7 @@ public class PdeWriter {
 
         for(int i=0, n=4*8; i < n; i+=8){
             dest[offset++] = (byte) (0xFF & (intBits >> i));
+
         }
     }
 
