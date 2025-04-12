@@ -173,6 +173,8 @@ public class PdeWriterTest {
         assertEquals(0xff, 0xff & writer.dest[5]);
     }
 
+
+
     @Test
     public void testWriteFloat32() {
         PdeWriter writer = new PdeWriter(new byte[1024]);
@@ -190,10 +192,30 @@ public class PdeWriterTest {
     }
 
     @Test
+    public void testWriteFloat32Obj() {
+        PdeWriter writer = new PdeWriter(new byte[1024]);
+
+        Float value  = 123.45f;
+        int intValue = Float.floatToIntBits(value);
+
+        writer.writeFloat32Obj(null);
+        writer.writeFloat32Obj(value);
+        assertEquals(6, writer.offset);
+
+        int offset = 0;
+        assertEquals(PdeFieldTypes.FLOAT_NULL, writer.dest[offset++]);
+        assertEquals(PdeFieldTypes.FLOAT_4_BYTES, writer.dest[offset++]);
+        assertEquals((byte) (intValue     & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (intValue>>8  & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (intValue>>16 & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (intValue>>24 & 0x00_00_00_FF), writer.dest[offset++]);
+    }
+
+    @Test
     public void testWriteFloat64() {
         PdeWriter writer = new PdeWriter(new byte[1024]);
 
-        double value   = 123.4567f;
+        double value   = 123.4567d;
         long longValue = Double.doubleToLongBits(value);
 
         writer.writeFloat64(value);
@@ -207,6 +229,30 @@ public class PdeWriterTest {
         assertEquals((byte) (longValue>>40 & 0x00_00_00_FF), writer.dest[6]);
         assertEquals((byte) (longValue>>48 & 0x00_00_00_FF), writer.dest[7]);
         assertEquals((byte) (longValue>>56 & 0x00_00_00_FF), writer.dest[8]);
+    }
+
+    @Test
+    public void testWriteFloat64Obj() {
+        PdeWriter writer = new PdeWriter(new byte[1024]);
+
+        Double value   = 123.4567d;
+        long longValue = Double.doubleToLongBits(value);
+
+        writer.writeFloat64Obj(null);
+        writer.writeFloat64Obj(value);
+        assertEquals(10, writer.offset);
+
+        int offset = 0;
+        assertEquals(PdeFieldTypes.FLOAT_NULL, writer.dest[offset++]);
+        assertEquals(PdeFieldTypes.FLOAT_8_BYTES, writer.dest[offset++]);
+        assertEquals((byte) (longValue     & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (longValue>>8  & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (longValue>>16 & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (longValue>>24 & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (longValue>>32 & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (longValue>>40 & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (longValue>>48 & 0x00_00_00_FF), writer.dest[offset++]);
+        assertEquals((byte) (longValue>>56 & 0x00_00_00_FF), writer.dest[offset++]);
     }
 
 

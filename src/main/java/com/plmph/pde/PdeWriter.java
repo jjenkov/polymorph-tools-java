@@ -144,12 +144,39 @@ public class PdeWriter {
         }
     }
 
+    public void writeFloat32Obj(Float value) {
+        if(value == null) {
+            dest[offset++] = PdeFieldTypes.FLOAT_NULL;
+        } else {
+            int intBits = Float.floatToIntBits(value.floatValue());
+            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.FLOAT_4_BYTES));
+
+            for(int i=0, n=4*8; i < n; i+=8){
+                dest[offset++] = (byte) (0xFF & (intBits >> i));
+            }
+        }
+
+    }
+
     public void writeFloat64(double value) {
         long longBits = Double.doubleToLongBits(value);
         dest[offset++] = (byte) (0xFF & (PdeFieldTypes.FLOAT_8_BYTES));
 
         for(int i=0, n=8*8; i < n; i+=8){
             dest[offset++] = (byte) (0xFF & (longBits >> i));
+        }
+    }
+
+    public void writeFloat64Obj(Double value) {
+        if(value == null) {
+            dest[offset++] = PdeFieldTypes.FLOAT_NULL;
+        } else {
+            long longBits = Double.doubleToLongBits(value.doubleValue());
+            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.FLOAT_8_BYTES));
+
+            for(int i=0, n=8*8; i < n; i+=8){
+                dest[offset++] = (byte) (0xFF & (longBits >> i));
+            }
         }
     }
 
