@@ -341,7 +341,7 @@ public class PdeWriterTest {
 
         PdeWriter writer = new PdeWriter(dest);
 
-        writer.writeAscii(null);
+        writer.writeAsciiString((String) null);
         assertEquals(1, writer.offset);
         assertEquals(PdeFieldTypes.ASCII_NULL, dest[0]);
 
@@ -363,6 +363,7 @@ public class PdeWriterTest {
         for(int i=0; i<sourceUtf8Bytes.length; i++) {
             assertEquals(sourceUtf8Bytes[i], dest[9 + i]);
         }
+
     }
 
     @Test
@@ -371,12 +372,11 @@ public class PdeWriterTest {
 
         PdeWriter writer = new PdeWriter(dest);
 
-        writer.writeUtf8(null);
+        writer.writeUtf8String((String) null);
         assertEquals(1, writer.offset);
         assertEquals(PdeFieldTypes.UTF_8_NULL, dest[0]);
 
-        String sourceString1 = "abcde";
-        writer.writeUtf8(sourceString1.getBytes(StandardCharsets.UTF_8));
+        writer.writeUtf8String("abcde");
         assertEquals(7, writer.offset);
         assertEquals(PdeFieldTypes.UTF_8_5_BYTES, dest[1]);
         assertEquals('a', dest[2]);
@@ -646,7 +646,7 @@ public class PdeWriterTest {
         assertEquals('4', (char) (0xFF & dest[13]));
         assertEquals('5', (char) (0xFF & dest[14]));
 
-        System.out.println(HexUtil.convert(new StringBuffer(), writer.dest, 0, writer.offset));
+        System.out.println(HexUtil.convert(writer.dest, 0, writer.offset, new StringBuffer()));
     }
 
 

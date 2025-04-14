@@ -63,6 +63,7 @@ public class PdeReader {
         this.scopeEndOffset = offset + length ;
         return this;
     }
+    public byte[] getSource() { return this.source; }
 
     public boolean hasNext() {
         return this.nextOffset < this.scopeEndOffset;

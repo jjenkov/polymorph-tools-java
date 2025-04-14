@@ -11,7 +11,7 @@ public class HexUtilTest {
     public void testBinToHex() {
         byte[] bytes = new byte[]{0,1,2,3,4,5, -1, -2, -3, -4, -5};
 
-        StringBuffer hexBuffer = HexUtil.convert(new StringBuffer(), bytes, 0, bytes.length);
+        StringBuffer hexBuffer = HexUtil.convert(bytes, 0, bytes.length, new StringBuffer());
 
         assertEquals("000102030405FFFEFDFCFB", hexBuffer.toString());
     }

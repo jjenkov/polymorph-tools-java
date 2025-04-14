@@ -1,5 +1,7 @@
 package com.plmph.pde;
 
+import java.nio.charset.StandardCharsets;
+
 public class PdeWriter {
 
     public static final int FIELD_TYPE_BYTE_COUNT = 1;
@@ -203,6 +205,10 @@ public class PdeWriter {
         this.offset += length;
     }
 
+    public void writeAsciiString(String asciiStr){
+        writeAscii(asciiStr.getBytes(StandardCharsets.US_ASCII));
+    }
+
     public void writeAscii(byte[] bytes) {
         if(bytes == null) {
             dest[offset++] = (byte) (0xFF & (PdeFieldTypes.ASCII_NULL));
@@ -213,13 +219,6 @@ public class PdeWriter {
     }
 
     public void writeAscii(byte[] bytes, int offset, int length) {
-        /*
-        if(bytes == null) {
-            dest[this.offset++] = (byte) (0xFF & (PdeFieldTypes.ASCII_NULL));
-            return;
-        }
-        */
-
         if(length < 16){
             dest[this.offset++] = (byte) (0xFF & (PdeFieldTypes.ASCII_0_BYTES + length));
         } else {
@@ -235,40 +234,19 @@ public class PdeWriter {
         this.offset += length;
     }
 
+    public void writeUtf8String(String keyStr){
+        writeUtf8(keyStr.getBytes(StandardCharsets.UTF_8));
+    }
+
     public void writeUtf8(byte[] bytes) {
         if(bytes == null) {
             dest[offset++] = (byte) (0xFF & (PdeFieldTypes.UTF_8_NULL));
             return;
         }
         writeUtf8(bytes, 0, bytes.length);
-
-        /*
-        int length = bytes.length;
-
-        if(length < 16){
-            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.UTF_8_0_BYTES + length));
-        } else {
-            int lengthLength = PdeUtil.byteLengthOfInt64Value(length);
-            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.UTF_8_15_BYTES + lengthLength));
-            for(int i=0, n=lengthLength*8; i < n; i+=8){
-                dest[offset++] = (byte) (0xFF & (length >> i));
-            }
-        }
-
-        System.arraycopy(bytes, 0, dest, offset, length);
-
-        this.offset += length;
-         */
     }
 
     public void writeUtf8(byte[] bytes, int offset, int length) {
-        /*
-        if(bytes == null) {
-            dest[this.offset++] = (byte) (0xFF & (PdeFieldTypes.UTF_8_NULL));
-            return;
-        }
-        */
-
         if(length < 16){
             dest[this.offset++] = (byte) (0xFF & (PdeFieldTypes.UTF_8_0_BYTES + length));
         } else {
@@ -337,6 +315,14 @@ public class PdeWriter {
     }
 
 
+    public void writeKeyAscii(String keyStr){
+        writeKey(keyStr.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    public void writeKeyUtf8(String keyStr){
+        writeKey(keyStr.getBytes(StandardCharsets.UTF_8));
+    }
+
     public void writeKey(byte[] bytes) {
         if(bytes == null) {
             dest[offset++] = (byte) (0xFF & (PdeFieldTypes.KEY_NULL));
@@ -360,6 +346,9 @@ public class PdeWriter {
         this.offset += length;
     }
 
+    public void writeObjectNull(){
+        this.dest[this.offset++] = (byte) (0xFF & (PdeFieldTypes.OBJECT_NULL));
+    }
 
     public void writeObjectBeginPush(int lengthLength){
         this.compositeFieldStack[++this.compositeFieldStackIndex] = this.offset;
@@ -378,6 +367,10 @@ public class PdeWriter {
         for(int i=0, n=lengthLength*8; i < n; i+=8){
             dest[objectStartIndex++] = (byte) (0xFF & (length >> i));
         }
+    }
+
+    public void writeTableNull(){
+        this.dest[this.offset++] = (byte) (0xFF & (PdeFieldTypes.TABLE_NULL));
     }
 
     public void writeTableBeginPush(int lengthLength){

@@ -22,8 +22,22 @@ public class HexUtil {
         hexChars[15] = 'F';
     }
 
+    public static void convert(byte[] source, int offset, int length, byte[] dest, int destOffset){
+        for(int i=offset, n=offset + length; i < n; i++) {
+            int byteVal = 0xFF & source[i];
 
-    public static StringBuffer convert(StringBuffer dest, byte[] source, int offset, int length) {
+            int leftDigit  = byteVal >> 4;
+            int rightDigit = byteVal & 0x0F;
+
+            char leftChar  = hexChars[leftDigit];
+            char rightChar = hexChars[rightDigit];
+
+            dest[destOffset++] = (byte) (0xFF & leftChar);
+            dest[destOffset++] = (byte) (0xFF & rightChar);
+        }
+    }
+
+    public static StringBuffer convert(byte[] source, int offset, int length, StringBuffer dest) {
         for(int i=offset, n=offset + length; i < n; i++) {
             int byteVal = 0xFF & source[i];
 
