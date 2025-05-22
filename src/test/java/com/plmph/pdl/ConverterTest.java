@@ -1,5 +1,6 @@
 package com.plmph.pdl;
 
+import com.plmph.pde.PdeFieldTypes;
 import com.plmph.pde.PdeWriter;
 import org.junit.jupiter.api.Test;
 
@@ -9,9 +10,105 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ConverterTest {
 
+    @Test
+    public void testPdlToPde() {
+        byte[] pdeDest   = new byte[1024];
+        byte[] pdlSource = PdlStrings.pdlBytes2;
+        long[] tokenOffsets = new long[1024];
+
+        System.out.println("pdlSource.length = " + pdlSource.length);
+
+        Converter converter = new Converter();
+        int tokenCount = PdlTokenizer.tokenize(pdlSource, 0, pdlSource.length, tokenOffsets);
+
+        int pdeByteCount = converter.pdlToPde(pdlSource, tokenOffsets, tokenCount, pdeDest, 0);
+        System.out.println("pdeByteCount: " + pdeByteCount);
+
+        int offset = 0;
+        assertEquals(PdeFieldTypes.BOOLEAN_FALSE, 0xFF & pdeDest[offset++]);
+
+        assertEquals(PdeFieldTypes.INT_POS_1_BYTES, 0xFF & pdeDest[offset++]);
+        assertEquals(123, 0xFF & pdeDest[offset++]);
+
+        assertEquals(PdeFieldTypes.INT_NEG_2_BYTES, 0xFF & pdeDest[offset++]);
+        assertEquals((789-1) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals((789-1) >> 8  , 0xFF & pdeDest[offset++]);
+
+        assertEquals(PdeFieldTypes.FLOAT_4_BYTES, 0xFF & pdeDest[offset++]);
+        int floatBits = Float.floatToIntBits(123.45f);
+        assertEquals( (floatBits) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (floatBits >>  8) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (floatBits >> 16) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (floatBits >> 24) & 0xFF, 0xFF & pdeDest[offset++]);
+
+        assertEquals(PdeFieldTypes.FLOAT_8_BYTES, 0xFF & pdeDest[offset++]);
+        long doubleBits = Double.doubleToLongBits(12345.6789d);
+        assertEquals( (doubleBits) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (doubleBits >>  8) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (doubleBits >> 16) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (doubleBits >> 24) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (doubleBits >> 32) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (doubleBits >> 40) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (doubleBits >> 48) & 0xFF, 0xFF & pdeDest[offset++]);
+        assertEquals( (doubleBits >> 56) & 0xFF, 0xFF & pdeDest[offset++]);
+
+        //todo remember to test binary data in hex and base64 encoding
+        assertEquals(PdeFieldTypes.BYTES_2_LENGTH_BYTES, 0xFF & pdeDest[offset++]);
+        assertEquals(4, 0xFF & pdeDest[offset++]);
+        assertEquals(0x00, 0xFF & pdeDest[offset++]); // 2nd length byte
+        assertEquals(0x23, 0xFF & pdeDest[offset++]);
+        assertEquals(0xEF, 0xFF & pdeDest[offset++]);
+        assertEquals(0x45, 0xFF & pdeDest[offset++]);
+        assertEquals(0xA2, 0xFF & pdeDest[offset++]);
+
+
+
+        assertEquals(PdeFieldTypes.BYTES_12_BYTES, 0xFF & pdeDest[offset++]);
+        assertEquals('U', 0xFF & pdeDest[offset++]);
+        assertEquals('T', 0xFF & pdeDest[offset++]);
+        assertEquals('F', 0xFF & pdeDest[offset++]);
+        assertEquals('-', 0xFF & pdeDest[offset++]);
+        assertEquals('8', 0xFF & pdeDest[offset++]);
+        assertEquals(' ', 0xFF & pdeDest[offset++]);
+        assertEquals('b', 0xFF & pdeDest[offset++]);
+        assertEquals('i', 0xFF & pdeDest[offset++]);
+        assertEquals('n', 0xFF & pdeDest[offset++]);
+        assertEquals('a', 0xFF & pdeDest[offset++]);
+        assertEquals('r', 0xFF & pdeDest[offset++]);
+        assertEquals('y', 0xFF & pdeDest[offset++]);
+
+
+
+        assertEquals(PdeFieldTypes.ASCII_11_BYTES, 0xFF & pdeDest[offset++]);
+        assertEquals('A', 0xFF & pdeDest[offset++]);
+        assertEquals('S', 0xFF & pdeDest[offset++]);
+        assertEquals('C', 0xFF & pdeDest[offset++]);
+        assertEquals('I', 0xFF & pdeDest[offset++]);
+        assertEquals('I', 0xFF & pdeDest[offset++]);
+        assertEquals(' ', 0xFF & pdeDest[offset++]);
+        assertEquals('t', 0xFF & pdeDest[offset++]);
+        assertEquals('o', 0xFF & pdeDest[offset++]);
+        assertEquals('k', 0xFF & pdeDest[offset++]);
+        assertEquals('e', 0xFF & pdeDest[offset++]);
+        assertEquals('n', 0xFF & pdeDest[offset++]);
+
+        assertEquals(PdeFieldTypes.UTF_8_11_BYTES, 0xFF & pdeDest[offset++]);
+        assertEquals('U', 0xFF & pdeDest[offset++]);
+        assertEquals('T', 0xFF & pdeDest[offset++]);
+        assertEquals('F', 0xFF & pdeDest[offset++]);
+        assertEquals('-', 0xFF & pdeDest[offset++]);
+        assertEquals('8', 0xFF & pdeDest[offset++]);
+        assertEquals(' ', 0xFF & pdeDest[offset++]);
+        assertEquals('t', 0xFF & pdeDest[offset++]);
+        assertEquals('o', 0xFF & pdeDest[offset++]);
+        assertEquals('k', 0xFF & pdeDest[offset++]);
+        assertEquals('e', 0xFF & pdeDest[offset++]);
+        assertEquals('n', 0xFF & pdeDest[offset++]);
+
+    }
 
     @Test
-    public void test() {
+    public void testPdeToPdl() {
         byte[] pdeSource = new byte[1024];
         PdeWriter pdeWriter = new PdeWriter().setCompositeFieldStack(new int[16]);
         pdeWriter.setDest(pdeSource);

@@ -1,8 +1,9 @@
 package com.plmph.pdl;
 
 import com.plmph.hex.HexUtil;
-import com.plmph.pde.PdeFieldTypes;
 import com.plmph.pde.PdeReader;
+import com.plmph.pde.PdeUtil;
+import com.plmph.pde.PdeWriter;
 
 // Contains all the BOOLEAN_NULL etc. field type constants.
 import static com.plmph.pde.PdeFieldTypes.*;
@@ -10,6 +11,12 @@ import static com.plmph.pde.PdeFieldTypes.*;
 public class Converter {
 
     private static final byte[] decimalDigits = new byte[] {'0', '1', '2', '3', '4','5', '6', '7', '8', '9' };
+
+
+    private int[] compositeFieldNestedFieldCountStack = new int[32];
+    private int[] compositeFieldStartIndexStack       = new int[32];
+    private int   compositeFieldStackIndex = 0;
+
 
     /**
      * Converts from PDE to PDL
@@ -67,7 +74,7 @@ public class Converter {
                      BYTES_1_LENGTH_BYTES, BYTES_2_LENGTH_BYTES, BYTES_3_LENGTH_BYTES, BYTES_4_LENGTH_BYTES,
                      BYTES_5_LENGTH_BYTES, BYTES_6_LENGTH_BYTES, BYTES_7_LENGTH_BYTES, BYTES_8_LENGTH_BYTES -> {
                     pdlDest[destOffset++] = '$';
-                    HexUtil.convert(pdeSource, pdeReader.offset + 1 + pdeReader.fieldLengthLength, pdeReader.fieldValueLength, pdlDest, destOffset);
+                    HexUtil.bytesToHex(pdeSource, pdeReader.offset + 1 + pdeReader.fieldLengthLength, pdeReader.fieldValueLength, pdlDest, destOffset);
                     destOffset += pdeReader.fieldValueLength*2;
                     pdlDest[destOffset++] = ';';
                 }
@@ -223,10 +230,238 @@ public class Converter {
 
 
     /**
-     * Converts from PDL to PDE
+     * Converts from PDL to PDE.
+     * @param pdlSource The byte array containing the PDL source bytes to convert to PDE.
+     * @param tokenOffsets The long array containing token offset pairs that results from a PDL tokenization of the PDL in the pdlSource byte array.
+     * @param tokenCount The number of tokens (elements) in the tokenOffsets long array.
+     * @param pdeDest The destination byte array to write the resulting PDE bytes into.
+     * @param destOffset The offset in the destination byte array to start writing PDE bytes.
+     *
+     * @Return How many bytes were written into the pdeDest byte array.
+     * @return The number of bytes written into the pdeDest byte array.
      */
-    public void pdlToPde(){
+    public int pdlToPde(byte[] pdlSource, long[] tokenOffsets, int tokenCount, byte[] pdeDest, int destOffset){
+        PdeWriter pdeWriter = new PdeWriter();
+        pdeWriter.setCompositeFieldStack(new int[32]);
+        pdeWriter.setDest(pdeDest, destOffset);
+        return pdlToPde(pdlSource, tokenOffsets, tokenCount, pdeWriter);
+    }
 
+    /**
+     * Converts from PDL to PDE.
+     * @param pdlSource The byte array containing the PDL source bytes to convert to PDE.
+     * @param tokenOffsets The long array containing token offset pairs that results from a PDL tokenization of the PDL in the pdlSource byte array.
+     * @param tokenCount The number of tokens (elements) in the tokenOffsets long array.
+     * @param pdeWriter The PdeWriter to use to write PDE bytes (from the PDL token offsets).
+     *
+     * @return The number of bytes written into the pdeDest byte array.
+     */
+    public int pdlToPde(byte[] pdlSource, long[] tokenOffsets, int tokenCount, PdeWriter pdeWriter){
+        long lastTokenOffsetPair = tokenOffsets[tokenCount-1];
+        int  lastTokenStartOffset = (int) ((0xFFFFFFFF) & lastTokenOffsetPair);
+        int  lastTokenEndOffset   = (int) ((0xFFFFFFFF) & (lastTokenOffsetPair >> 32));
+
+        int lengthLength = PdeUtil.byteCountForLength(lastTokenEndOffset); // todo Calculate length of pdlSource bytes as lastTokenEndOffset - firstTokenStartOffset
+        int destOffsetStart = pdeWriter.offset;
+
+        for(int i=0; i<tokenCount; i++){
+            long tokenOffsetPair = tokenOffsets[i];
+            int  tokenStartOffset = (int) ((0xFFFFFFFF) & tokenOffsetPair);
+            int  tokenEndOffset   = (int) ((0xFFFFFFFF) & (tokenOffsetPair >> 32));
+
+            int  tokenType = pdlSource[tokenStartOffset];
+
+            switch(tokenType){
+                case '#' : {
+                    //do nothing - comments are not embedded into PDE. They only exists in PDL.
+                    //todo comment out the following print() statement.
+                    System.out.println("Single-token comment"); break;
+                }
+                case '*' : {
+                    //do nothing - comments are not embedded into PDE. They only exists in PDL.
+                    //todo comment out the following print() statement.
+                    System.out.println("Multi-token comment"); break;
+                }
+                case '!' : {
+                    boolean value = pdlSource[tokenStartOffset + 1] == '1';
+                    pdeWriter.writeBoolean(value);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+                case '-', '+' : {
+                    tokenStartOffset++; // jump past token type char
+                    // no break - fall through to parsing the number following the token type character.
+                }
+                case '0','1', '2', '3', '4', '5', '6', '7', '8', '9' : {
+                    long value = 0;
+                    while(tokenStartOffset < tokenEndOffset-1){
+                        int nextChar = pdlSource[tokenStartOffset++];
+                        switch(nextChar) {
+                            case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' : {
+                                value = value * 10;
+                                value += nextChar - 48;
+                            }
+                            default : {
+                                //do nothing - ignore that character - or maybe throw an error saying it is not a valid number ?
+                            }
+                        }
+                    }
+                    if(tokenType == '-'){
+                        value = -value;
+                    }
+                    pdeWriter.writeInt(value);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+                case '%' : {
+                    tokenStartOffset++; // jump past token type character
+                    float value = Float.parseFloat(new String(pdlSource, tokenStartOffset, tokenEndOffset - tokenStartOffset - 1));
+                    pdeWriter.writeFloat32(value);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+                case '/' : {
+                    tokenStartOffset++; // jump past token type character
+                    double value = Double.parseDouble(new String(pdlSource, tokenStartOffset, tokenEndOffset - tokenStartOffset - 1));
+                    pdeWriter.writeFloat64(value);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+                case '$' : {
+                    tokenStartOffset++; // jump past token type character
+                    pdeWriter.writeBytesBeginPush(lengthLength);
+                    pdeWriter.offset += HexUtil.hexToBytes(pdlSource, tokenStartOffset, tokenEndOffset - tokenStartOffset - 1, pdeWriter.dest, pdeWriter.offset);
+                    pdeWriter.writeBytesEndPop();
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+                //todo insert case for base64
+                case '^' : {
+                    tokenStartOffset++; // jump past token type character
+                    int tokenLength = tokenEndOffset - tokenStartOffset;
+                    pdeWriter.writeBytes(pdlSource, tokenStartOffset, tokenEndOffset-tokenStartOffset-1);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+
+                case '\'' : {
+                    tokenStartOffset++; // jump past token type character
+                    pdeWriter.writeAscii(pdlSource, tokenStartOffset, tokenEndOffset-tokenStartOffset-1);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+                case '"' : {
+                    tokenStartOffset++; // jump past token type character
+                    pdeWriter.writeUtf8(pdlSource, tokenStartOffset, tokenEndOffset-tokenStartOffset-1);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+
+                case '.' : {
+                    tokenStartOffset++; // jump past token type character.
+                    pdeWriter.writeKey(pdlSource, tokenStartOffset, tokenEndOffset-tokenStartOffset-1);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    break;
+                }
+
+
+                //todo insert case for object, table, key, metadata, copy, reference, id (?)
+                case '{' : {
+                    //todo is it necessary to increment tokenStartOffset ? Do we ever use the incremented value?
+                    tokenStartOffset++; // jump past token type character
+                    pdeWriter.writeObjectBeginPush(lengthLength);
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+
+                    // push a new composite field counter and table column counter on their stacks.
+                    this.compositeFieldStackIndex++;
+                    this.compositeFieldNestedFieldCountStack[this.compositeFieldStackIndex] = 0;
+                    this.compositeFieldStartIndexStack[this.compositeFieldStackIndex] = i;
+
+                    break;
+                }
+                case '}' : {
+                    tokenStartOffset++; // jump past token type character
+                    pdeWriter.writeObjectEndPop();
+                    this.compositeFieldStackIndex--;
+                    break;
+                }
+                //todo figure out how to count the number of rows in the table...
+                case '[' : {
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    // push a new composite field counter and table column counter on their stacks.
+                    this.compositeFieldStackIndex++;
+                    this.compositeFieldNestedFieldCountStack[this.compositeFieldStackIndex] = 0;
+                    this.compositeFieldStartIndexStack[this.compositeFieldStackIndex] = i;
+                    tokenStartOffset++;
+                    pdeWriter.writeTableBeginPush(lengthLength);
+                    break;
+                }
+                case ']' : {
+                    int tableTokenStartOffset = this.compositeFieldStartIndexStack[this.compositeFieldStackIndex];
+                    System.out.println("table token start: " + tableTokenStartOffset);
+
+                    tableTokenStartOffset++; // move past first [ token
+                    //now count the key fields ( .xyz; )
+
+                    long localTokenOffsetPair = tokenOffsets[tableTokenStartOffset];
+                    int  localTokenStartOffset = (int) ((0xFFFFFFFF) & localTokenOffsetPair);
+                    int  localTokenType = pdlSource[localTokenStartOffset];
+
+                    System.out.println("first local token type char: " + (char) localTokenType);
+
+                    int keyFieldCount = 0;
+                    while(localTokenType == '.'){
+                        keyFieldCount++;
+                        tableTokenStartOffset++;
+
+                        localTokenOffsetPair = tokenOffsets[tableTokenStartOffset];
+                        localTokenStartOffset = (int) ((0xFFFFFFFF) & localTokenOffsetPair);
+                        localTokenType = pdlSource[localTokenStartOffset];
+                    }
+                    System.out.println("Table key field count: " + keyFieldCount);
+
+                    int totalTableFieldCount =
+                            this.compositeFieldNestedFieldCountStack[this.compositeFieldStackIndex] - keyFieldCount;
+
+                    System.out.println("Total table field count: " + totalTableFieldCount);
+
+                    if(keyFieldCount == 0){
+                        keyFieldCount = 1; // 0 keys means table is just an array => each element is 1 row.
+                    }
+                    int totalTableRowCount = totalTableFieldCount / keyFieldCount;
+
+                    System.out.println("Total table row count: " + totalTableRowCount);
+
+                    pdeWriter.writeTableEndPop(totalTableRowCount);
+
+                    this.compositeFieldStackIndex--;
+                    break;
+                }
+                case '<' : {
+                    compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
+                    // push a new composite field counter and table column counter on their stacks.
+                    this.compositeFieldStackIndex++;
+                    this.compositeFieldNestedFieldCountStack[this.compositeFieldStackIndex] = 0;
+                    this.compositeFieldStartIndexStack[this.compositeFieldStackIndex] = i;
+
+                    //todo is it necessary to increment tokenStartOffset ? Do we ever use the incremented value?
+                    tokenStartOffset++; // jump past token type character
+                    pdeWriter.writeMetadataBeginPush(lengthLength);
+                    break;
+                }
+                case '>' : {
+                    tokenStartOffset++; // jump past token type character
+                    pdeWriter.writeMetadataEndPop();
+
+                    this.compositeFieldStackIndex--;
+                    break;
+                }
+
+                default : {}
+            }
+        }
+
+        return pdeWriter.offset - destOffsetStart;
     }
 
 

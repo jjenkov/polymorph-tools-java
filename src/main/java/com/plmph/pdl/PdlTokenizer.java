@@ -50,6 +50,7 @@ public class PdlTokenizer {
             offset++;
         }
 
+        //todo try combining offset < endOffset & source[offset] != tokenEndCharacter in same condition.
         while(offset < endOffset){
             int tokenStartOffset  = offset;
             int tokenEndCharacter = tokenEndCharacters[source[tokenStartOffset]];

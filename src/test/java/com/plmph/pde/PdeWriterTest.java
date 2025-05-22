@@ -336,6 +336,36 @@ public class PdeWriterTest {
     }
 
     @Test
+    public void testWriteBytesPushPop(){
+        byte[] dest = new byte[1024];
+
+        PdeWriter writer = new PdeWriter(dest);
+        writer.setCompositeFieldStack(new int[16]);
+
+        byte[] source = new byte[]{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
+
+        writer.writeBytesBeginPush(2);
+        System.arraycopy(source, 0, writer.dest, writer.offset, source.length);
+        writer.offset += source.length;
+        writer.writeBytesEndPop();
+
+        assertEquals(11, writer.offset);
+
+        int offset = 0;
+        assertEquals(PdeFieldTypes.BYTES_2_LENGTH_BYTES, dest[offset++]);
+        assertEquals(0x08, 0xFF & dest[offset++]); // first length byte
+        assertEquals(0x00, 0xFF & dest[offset++]); // second length byte
+        assertEquals(0x00, 0xFF & dest[offset++]); // first value byte
+        assertEquals(0x01, 0xFF & dest[offset++]);
+        assertEquals(0x02, 0xFF & dest[offset++]);
+        assertEquals(0x03, 0xFF & dest[offset++]);
+        assertEquals(0x04, 0xFF & dest[offset++]);
+        assertEquals(0x05, 0xFF & dest[offset++]);
+        assertEquals(0x06, 0xFF & dest[offset++]);
+        assertEquals(0x07, 0xFF & dest[offset++]);
+    }
+
+    @Test
     public void testWriteAscii() {
         byte[] dest = new byte[65 * 1024];
 
@@ -363,7 +393,39 @@ public class PdeWriterTest {
         for(int i=0; i<sourceUtf8Bytes.length; i++) {
             assertEquals(sourceUtf8Bytes[i], dest[9 + i]);
         }
+    }
 
+    @Test
+    public void testWriteAsciiPushPop(){
+        byte[] dest = new byte[1024];
+
+        PdeWriter writer = new PdeWriter(dest);
+        writer.setCompositeFieldStack(new int[16]);
+
+        String sourceStr = "ASCII text";
+        byte[] source = sourceStr.getBytes(StandardCharsets.US_ASCII);
+
+        writer.writeAsciiBeginPush(2);
+        System.arraycopy(source, 0, writer.dest, writer.offset, source.length);
+        writer.offset += source.length;
+        writer.writeAsciiEndPop();
+
+        assertEquals(13, writer.offset);
+
+        int offset = 0;
+        assertEquals(PdeFieldTypes.ASCII_2_LENGTH_BYTES, dest[offset++]);
+        assertEquals(0x0A, 0xFF & dest[offset++]); // first length byte
+        assertEquals(0x00, 0xFF & dest[offset++]); // second length byte
+        assertEquals('A', 0xFF & dest[offset++]);  // first value byte
+        assertEquals('S', 0xFF & dest[offset++]);
+        assertEquals('C', 0xFF & dest[offset++]);
+        assertEquals('I', 0xFF & dest[offset++]);
+        assertEquals('I', 0xFF & dest[offset++]);
+        assertEquals(' ', 0xFF & dest[offset++]);
+        assertEquals('t', 0xFF & dest[offset++]);
+        assertEquals('e', 0xFF & dest[offset++]);
+        assertEquals('x', 0xFF & dest[offset++]);
+        assertEquals('t', 0xFF & dest[offset++]);
     }
 
     @Test
@@ -394,6 +456,40 @@ public class PdeWriterTest {
             assertEquals(sourceUtf8Bytes[i], dest[9 + i]);
         }
     }
+
+    @Test
+    public void testWriteUtf8PushPop(){
+        byte[] dest = new byte[1024];
+
+        PdeWriter writer = new PdeWriter(dest);
+        writer.setCompositeFieldStack(new int[16]);
+
+        String sourceStr = "UTF-8 text";
+        byte[] source = sourceStr.getBytes(StandardCharsets.UTF_8);
+
+        writer.writeUtf8BeginPush(2);
+        System.arraycopy(source, 0, writer.dest, writer.offset, source.length);
+        writer.offset += source.length;
+        writer.writeUtf8EndPop();
+
+        assertEquals(13, writer.offset);
+
+        int offset = 0;
+        assertEquals(PdeFieldTypes.UTF_8_2_LENGTH_BYTES, dest[offset++]);
+        assertEquals(0x0A, 0xFF & dest[offset++]); // first length byte
+        assertEquals(0x00, 0xFF & dest[offset++]); // second length byte
+        assertEquals('U', 0xFF & dest[offset++]);  // first value byte
+        assertEquals('T', 0xFF & dest[offset++]);
+        assertEquals('F', 0xFF & dest[offset++]);
+        assertEquals('-', 0xFF & dest[offset++]);
+        assertEquals('8', 0xFF & dest[offset++]);
+        assertEquals(' ', 0xFF & dest[offset++]);
+        assertEquals('t', 0xFF & dest[offset++]);
+        assertEquals('e', 0xFF & dest[offset++]);
+        assertEquals('x', 0xFF & dest[offset++]);
+        assertEquals('t', 0xFF & dest[offset++]);
+    }
+
 
     @Test
     public void testWriteUtc() {
@@ -646,7 +742,7 @@ public class PdeWriterTest {
         assertEquals('4', (char) (0xFF & dest[13]));
         assertEquals('5', (char) (0xFF & dest[14]));
 
-        System.out.println(HexUtil.convert(writer.dest, 0, writer.offset, new StringBuffer()));
+        System.out.println(HexUtil.bytesToHex(writer.dest, 0, writer.offset, new StringBuffer()));
     }
 
 

@@ -22,7 +22,7 @@ public class HexUtil {
         hexChars[15] = 'F';
     }
 
-    public static void convert(byte[] source, int offset, int length, byte[] dest, int destOffset){
+    public static void bytesToHex(byte[] source, int offset, int length, byte[] dest, int destOffset){
         for(int i=offset, n=offset + length; i < n; i++) {
             int byteVal = 0xFF & source[i];
 
@@ -37,7 +37,7 @@ public class HexUtil {
         }
     }
 
-    public static StringBuffer convert(byte[] source, int offset, int length, StringBuffer dest) {
+    public static StringBuffer bytesToHex(byte[] source, int offset, int length, StringBuffer dest) {
         for(int i=offset, n=offset + length; i < n; i++) {
             int byteVal = 0xFF & source[i];
 
@@ -52,6 +52,59 @@ public class HexUtil {
         }
         return dest;
     }
+
+    public static int hexToBytes(byte[] hexSource, int sourceOffset, int sourceLength, byte[] dest, int destOffset) {
+        int startDestOffset = destOffset;
+        int sourceEndOffset = sourceOffset + sourceLength;
+
+        //skip whitespace
+        while(sourceOffset < sourceEndOffset){
+            if(hexSource[sourceOffset] > 32 ) { break; } // All ASCII values from 32 and down are considered white space
+            sourceOffset++;
+        }
+
+        while(sourceOffset < sourceEndOffset){
+            int leftDigit  = hexSource[sourceOffset++];
+            int rightDigit = hexSource[sourceOffset++];
+
+            if(leftDigit >= 48 && leftDigit <= 57) {
+                leftDigit -= 48;
+            } else if(leftDigit >= 65 && leftDigit <= 70) {
+                leftDigit -= 55; // 55 = 65 - 10 - because A is 10, not 0
+            } else if(leftDigit >= 97 && leftDigit <= 102) {
+                leftDigit -= 87; // 87 = 97 - 10 - because a is 10, not 0
+            } else {
+                // todo not a hex digit char... do what? ignore? throw exception?
+                leftDigit = 0;
+            }
+
+            if(rightDigit >= 48 && rightDigit <= 57) {
+                rightDigit -= 48;
+            } else if(rightDigit >= 65 && rightDigit <= 70) {
+                rightDigit -= 55; // 55 = 65 - 10 - because A is 10, not 0
+            } else if(rightDigit >= 97 && rightDigit <= 102) {
+                rightDigit -= 87; // 87 = 97 - 10 - because a is 10, not 0
+            } else {
+                // todo not a hex digit char... do what? ignore? throw exception?
+                rightDigit = 0;
+            }
+
+            int value = leftDigit << 4 | (0xF & rightDigit); // todo check if   0xF &   is really necessary here.
+
+            dest[destOffset++] = (byte) (0xFF & value);
+
+            //skip whitespace
+            while(sourceOffset < sourceEndOffset){
+                if(hexSource[sourceOffset] > 32 ) { break; } // All ASCII values from 32 and down are considered white space
+                sourceOffset++;
+            }
+        }
+
+          return destOffset - startDestOffset;
+
+    }
+
+
 
 
 }

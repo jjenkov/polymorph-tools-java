@@ -8,34 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class PdlTokenizerTest {
 
-    private static String pdlString
-            = """
-              #single-token comment;
-              *multi-token  comment;~
-              !0;
-              123;
-              -789;
-              %123.45;
-              /12345.6789;
-              $23EF 45A2;
-              |QmFzZTY0IGRhdGE=;
-              ^UTF-8 binary;       
-              'ASCII token;             
-              "UTF-8 token;
-              @2030-12-31T23:59:59.999;
-              :obj1;
-              =obj1;
-              &obj1;
-              .key1;
-              {
-              }
-              [
-              ]
-              <
-              >
-              namedToken( )              
-              """;
-    private static byte[] pdlBytes = pdlString.getBytes(StandardCharsets.UTF_8);
+    //private static byte[] pdlBytes = PdlStrings.pdlString.getBytes(StandardCharsets.UTF_8);
+    private static byte[] pdlBytes = PdlStrings.pdlBytes;
 
 
     @Test

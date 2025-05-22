@@ -187,25 +187,81 @@ public class PdeWriter {
             dest[offset++] = (byte) (0xFF & (PdeFieldTypes.BYTES_NULL));
             return;
         }
+        writeBytes(bytes, 0, bytes.length);
+    }
 
-        int length = bytes.length;
+    public void writeBytes(byte[] bytes, int bytesOffset, int bytesLength){
 
-        if(length < 16){
-            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.BYTES_0_BYTES + length));
+        if(bytesLength < 16){
+            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.BYTES_0_BYTES + bytesLength));
         } else {
-            int lengthLength = PdeUtil.byteLengthOfInt64Value(length);
+            int lengthLength = PdeUtil.byteLengthOfInt64Value(bytesLength);
             dest[offset++] = (byte) (0xFF & (PdeFieldTypes.BYTES_15_BYTES + lengthLength));
             for(int i=0, n=lengthLength*8; i < n; i+=8){
-                dest[offset++] = (byte) (0xFF & (length >> i));
+                dest[offset++] = (byte) (0xFF & (bytesLength >> i));
             }
         }
 
-        System.arraycopy(bytes, 0, dest, offset, length);
+        System.arraycopy(bytes, bytesOffset, dest, offset, bytesLength);
 
-        this.offset += length;
+        this.offset += bytesLength;
     }
 
+
+    protected void writeAtomicBeginPush(int baseAtomicFieldTypeCode, int lengthLength){
+        this.compositeFieldStack[++this.compositeFieldStackIndex] = this.offset;
+        this.dest[this.offset++] = (byte) (0xFF & ((baseAtomicFieldTypeCode + lengthLength)));
+        this.offset += lengthLength;
+    }
+
+    public void writeAtomicEndPop(int baseAtomicFieldTypeCode){
+        int bytesStartIndex = this.compositeFieldStack[this.compositeFieldStackIndex--];
+        int lengthLength = ((int) (0xFF & this.dest[bytesStartIndex])) - ((int) (0xFF & baseAtomicFieldTypeCode));
+        int length = this.offset - bytesStartIndex - FIELD_TYPE_BYTE_COUNT - lengthLength;
+
+        bytesStartIndex++; //jump over lead byte of object field.
+
+        //Encode length bytes using little endian instead of big endian.
+        for(int i=0, n=lengthLength*8; i < n; i+=8){
+            dest[bytesStartIndex++] = (byte) (0xFF & (length >> i));
+        }
+    }
+
+    /*
+    public void writeBytesBeginPush(int lengthLength){
+        this.compositeFieldStack[++this.compositeFieldStackIndex] = this.offset;
+        this.dest[this.offset++] = (byte) (0xFF & ((PdeFieldTypes.BYTES_15_BYTES + lengthLength)));
+        this.offset += lengthLength;
+    }
+
+    public void writeBytesEndPop(){
+        int bytesStartIndex = this.compositeFieldStack[this.compositeFieldStackIndex--];
+        int lengthLength = ((int) (0xFF & this.dest[bytesStartIndex])) - ((int) (0xFF & PdeFieldTypes.BYTES_15_BYTES));
+        int length = this.offset - bytesStartIndex - FIELD_TYPE_BYTE_COUNT - lengthLength;
+
+        bytesStartIndex++; //jump over lead byte of object field.
+
+        //Encode length bytes using little endian instead of big endian.
+        for(int i=0, n=lengthLength*8; i < n; i+=8){
+            dest[bytesStartIndex++] = (byte) (0xFF & (length >> i));
+        }
+    }
+
+    */
+    public void writeBytesBeginPush(int lengthLength){
+        writeAtomicBeginPush(PdeFieldTypes.BYTES_15_BYTES, lengthLength);
+    }
+    public void writeBytesEndPop(){
+        writeAtomicEndPop(PdeFieldTypes.BYTES_15_BYTES);
+    }
+
+
+
     public void writeAsciiString(String asciiStr){
+        if(asciiStr == null) {
+            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.ASCII_NULL));
+            return;
+        }
         writeAscii(asciiStr.getBytes(StandardCharsets.US_ASCII));
     }
 
@@ -234,16 +290,28 @@ public class PdeWriter {
         this.offset += length;
     }
 
-    public void writeUtf8String(String keyStr){
-        writeUtf8(keyStr.getBytes(StandardCharsets.UTF_8));
+    public void writeAsciiBeginPush(int lengthLength){
+        writeAtomicBeginPush(PdeFieldTypes.ASCII_15_BYTES, lengthLength);
+    }
+    public void writeAsciiEndPop(){
+        writeAtomicEndPop(PdeFieldTypes.ASCII_15_BYTES);
     }
 
-    public void writeUtf8(byte[] bytes) {
-        if(bytes == null) {
+
+    public void writeUtf8String(String utf8Str){
+        if(utf8Str == null) {
             dest[offset++] = (byte) (0xFF & (PdeFieldTypes.UTF_8_NULL));
             return;
         }
-        writeUtf8(bytes, 0, bytes.length);
+        writeUtf8(utf8Str.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public void writeUtf8(byte[] utf8Bytes) {
+        if(utf8Bytes == null) {
+            dest[offset++] = (byte) (0xFF & (PdeFieldTypes.UTF_8_NULL));
+            return;
+        }
+        writeUtf8(utf8Bytes, 0, utf8Bytes.length);
     }
 
     public void writeUtf8(byte[] bytes, int offset, int length) {
@@ -260,6 +328,14 @@ public class PdeWriter {
         System.arraycopy(bytes, offset, dest, this.offset, length);
 
         this.offset += length;
+    }
+
+    public void writeUtf8BeginPush(int lengthLength){
+        writeAtomicBeginPush(PdeFieldTypes.UTF_8_15_BYTES, lengthLength);
+    }
+
+    public void writeUtf8EndPop(){
+        writeAtomicEndPop(PdeFieldTypes.UTF_8_15_BYTES);
     }
 
     public void writeUtc(int year, int month, int day, int hour, int minute, int second, int millisecond) {
@@ -323,14 +399,15 @@ public class PdeWriter {
         writeKey(keyStr.getBytes(StandardCharsets.UTF_8));
     }
 
-    public void writeKey(byte[] bytes) {
+    public void writeKey(byte[] bytes){
         if(bytes == null) {
             dest[offset++] = (byte) (0xFF & (PdeFieldTypes.KEY_NULL));
             return;
         }
+        writeKey(bytes, 0, bytes.length);
+    }
 
-        int length = bytes.length;
-
+    public void writeKey(byte[] bytes, int keyOffset, int length) {
         if(length < 16){
             dest[offset++] = (byte) (0xFF & (PdeFieldTypes.KEY_0_BYTES + length));
         } else {
@@ -341,7 +418,7 @@ public class PdeWriter {
             }
         }
 
-        System.arraycopy(bytes, 0, dest, offset, length);
+        System.arraycopy(bytes, keyOffset, dest, offset, length);
 
         this.offset += length;
     }
