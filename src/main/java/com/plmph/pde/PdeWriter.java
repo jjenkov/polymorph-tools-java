@@ -353,6 +353,18 @@ public class PdeWriter {
         this.dest[this.offset++] = (byte) (0xFF & (millisecond >> 8) );    // higher byte of millisecond
     }
 
+    public void writeUtcMillis(long millis) {
+        int baseFieldTypeCode = PdeFieldTypes.UTC_8_BYTES;
+
+        //int length = PdeUtil.byteLengthOfInt64Value(value);
+        int length = 8;
+        dest[offset++] = (byte) (0xFF & (baseFieldTypeCode));
+
+        for(int i=0, n=length*8; i < n; i+=8){
+            dest[offset++] = (byte) (0xFF & (millis >> i));
+        }
+    }
+
     public void writeCopy(int copyOffset){
         int length = PdeUtil.byteLengthOfInt32Value(copyOffset);
         dest[offset++] = (byte) (0xFF & ((PdeFieldTypes.COPY_1_BYTES - 1) + length));

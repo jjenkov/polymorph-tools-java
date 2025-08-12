@@ -513,6 +513,28 @@ public class PdeWriterTest {
         assertEquals( (0xFF & (999 >> 8) ), 0xFF & dest[9]);
     }
 
+    @Test
+    public void testWriteUtcMillis() {
+        byte[] dest = new byte[65 * 1024];
+
+        PdeWriter writer = new PdeWriter(dest);
+
+        writer.writeUtcMillis(999L);
+        assertEquals(9, writer.offset);
+
+        assertEquals(PdeFieldTypes.UTC_8_BYTES, dest[0]);
+
+        assertEquals( (0xFF &  999)       , 0xFF & dest[1]);
+        assertEquals( (0xFF & (999 >> 8) ), 0xFF & dest[2]);
+        assertEquals(  0, dest[3]);
+        assertEquals(  0, dest[4]);
+        assertEquals(  0, dest[5]);
+        assertEquals(  0, dest[6]);
+        assertEquals(  0, dest[7]);
+        assertEquals(  0, dest[8]);
+        assertEquals(  0, dest[9]); // should not have been touched by writeUtcMillis() - just double checking
+    }
+
 
     @Test
     public void testWriteCopy() {
