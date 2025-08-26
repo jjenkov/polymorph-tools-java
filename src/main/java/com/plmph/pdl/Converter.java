@@ -6,6 +6,9 @@ import com.plmph.pde.PdeUtil;
 import com.plmph.pde.PdeWriter;
 
 // Contains all the BOOLEAN_NULL etc. field type constants.
+import java.util.GregorianCalendar;
+import java.util.TimeZone;
+
 import static com.plmph.pde.PdeFieldTypes.*;
 
 public class Converter {
@@ -272,40 +275,28 @@ public class Converter {
             int  tokenType = pdlSource[tokenStartOffset];
 
             switch(tokenType){
-                case '#' : {
+                case '#' : { // single-token comment
                     //do nothing - comments are not embedded into PDE. They only exists in PDL.
                     //todo comment out the following print() statement.
                     System.out.println("Single-token comment"); break;
                 }
-                case '*' : {
+                case '*' : { // multi-token comment
                     //do nothing - comments are not embedded into PDE. They only exists in PDL.
                     //todo comment out the following print() statement.
                     System.out.println("Multi-token comment"); break;
                 }
-                case '!' : {
+                case '!' : {  // null token
                     boolean value = pdlSource[tokenStartOffset + 1] == '1';
                     pdeWriter.writeBoolean(value);
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
                     break;
                 }
-                case '-', '+' : {
+                case '-', '+' : {  // negative or positive integer
                     tokenStartOffset++; // jump past token type char
                     // no break - fall through to parsing the number following the token type character.
                 }
-                case '0','1', '2', '3', '4', '5', '6', '7', '8', '9' : {
-                    long value = 0;
-                    while(tokenStartOffset < tokenEndOffset-1){
-                        int nextChar = pdlSource[tokenStartOffset++];
-                        switch(nextChar) {
-                            case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' : {
-                                value = value * 10;
-                                value += nextChar - 48;
-                            }
-                            default : {
-                                //do nothing - ignore that character - or maybe throw an error saying it is not a valid number ?
-                            }
-                        }
-                    }
+                case '0','1', '2', '3', '4', '5', '6', '7', '8', '9' : {   // positive integer
+                    long value = parseLong(pdlSource, tokenStartOffset, tokenEndOffset);
                     if(tokenType == '-'){
                         value = -value;
                     }
@@ -313,21 +304,21 @@ public class Converter {
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
                     break;
                 }
-                case '%' : {
+                case '%' : {  // 4 byte floating point
                     tokenStartOffset++; // jump past token type character
                     float value = Float.parseFloat(new String(pdlSource, tokenStartOffset, tokenEndOffset - tokenStartOffset - 1));
                     pdeWriter.writeFloat32(value);
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
                     break;
                 }
-                case '/' : {
+                case '/' : {  // 8 byte floating point
                     tokenStartOffset++; // jump past token type character
                     double value = Double.parseDouble(new String(pdlSource, tokenStartOffset, tokenEndOffset - tokenStartOffset - 1));
                     pdeWriter.writeFloat64(value);
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
                     break;
                 }
-                case '$' : {
+                case '$' : {  // bytes in hexadecimal encoding
                     tokenStartOffset++; // jump past token type character
                     pdeWriter.writeBytesBeginPush(lengthLength);
                     pdeWriter.offset += HexUtil.hexToBytes(pdlSource, tokenStartOffset, tokenEndOffset - tokenStartOffset - 1, pdeWriter.dest, pdeWriter.offset);
@@ -336,7 +327,7 @@ public class Converter {
                     break;
                 }
                 //todo insert case for base64
-                case '^' : {
+                case '^' : {  // bytes in UTF-8 encoding
                     tokenStartOffset++; // jump past token type character
                     int tokenLength = tokenEndOffset - tokenStartOffset;
                     pdeWriter.writeBytes(pdlSource, tokenStartOffset, tokenEndOffset-tokenStartOffset-1);
@@ -344,20 +335,69 @@ public class Converter {
                     break;
                 }
 
-                case '\'' : {
+                case '\'' : {  // ASCII text
                     tokenStartOffset++; // jump past token type character
                     pdeWriter.writeAscii(pdlSource, tokenStartOffset, tokenEndOffset-tokenStartOffset-1);
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
                     break;
                 }
-                case '"' : {
+                case '"' : {  // UTF-8 text
                     tokenStartOffset++; // jump past token type character
                     pdeWriter.writeUtf8(pdlSource, tokenStartOffset, tokenEndOffset-tokenStartOffset-1);
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
                     break;
                 }
+                case '@' : {   // UTC date-time
 
-                case '.' : {
+                    // todo this GregorianCalendar should be reusable across all UTC date time fields. No need to instantiate a new per field.
+                    GregorianCalendar calendar = new GregorianCalendar();
+                    calendar.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+                    tokenStartOffset++; // jump past token type character
+                    int tokenValueLength = tokenEndOffset - tokenStartOffset -1; // - 1 to not cound the toke end char
+
+                    if(tokenValueLength >= 4){ // there is a year in the date time
+                        long year = parseLong(pdlSource, tokenStartOffset, tokenStartOffset+4);
+                        calendar.set(GregorianCalendar.YEAR, (int) year);
+                        System.out.println("year = " + year);
+                    }
+                    if(tokenValueLength >=7) { // there is a month in the date time
+                        long month = parseLong(pdlSource, tokenStartOffset+5, tokenStartOffset+7);
+                        calendar.set(GregorianCalendar.MONTH, (int) (month-1));  // -1 because Calendar uses months from 0 to 11
+                        System.out.println("month = " + month);
+                    }
+                    if(tokenValueLength >=10) { // there is a day in the date time
+                        long day = parseLong(pdlSource, tokenStartOffset+8, tokenStartOffset+10);
+                        calendar.set(GregorianCalendar.DAY_OF_MONTH, (int) day);
+                        System.out.println("day = " + day);
+                    }
+                    if(tokenValueLength >=13) { // there is an hour in the date time
+                        long hour = parseLong(pdlSource, tokenStartOffset+11, tokenStartOffset+13);
+                        calendar.set(GregorianCalendar.HOUR_OF_DAY, (int) hour);
+                        System.out.println("hour = " + hour);
+                    }
+                    if(tokenValueLength >=16) { // there is a minute in the date time
+                        long minutes = parseLong(pdlSource, tokenStartOffset+14, tokenStartOffset+16);
+                        calendar.set(GregorianCalendar.MINUTE, (int) minutes);
+                        System.out.println("minutes = " + minutes);
+                    }
+                    if(tokenValueLength >=19) { // there is a second in the date time
+                        long seconds = parseLong(pdlSource, tokenStartOffset+17, tokenStartOffset+19);
+                        calendar.set(GregorianCalendar.SECOND, (int) seconds);
+                        System.out.println("seconds = " + seconds);
+                    }
+                    if(tokenValueLength >=23) { // there is a millisecond in the date time
+                        long millis = parseLong(pdlSource, tokenStartOffset+20, tokenStartOffset+23);
+                        calendar.set(GregorianCalendar.MILLISECOND, (int) millis);
+                        System.out.println("millis = " + millis);
+                    }
+
+                    pdeWriter.writeUtcMillis(calendar.getTimeInMillis());
+
+                    break;
+                }
+
+                case '.' : {  // Key field
                     tokenStartOffset++; // jump past token type character.
                     pdeWriter.writeKey(pdlSource, tokenStartOffset, tokenEndOffset-tokenStartOffset-1);
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
@@ -366,7 +406,7 @@ public class Converter {
 
 
                 //todo insert case for object, table, key, metadata, copy, reference, id (?)
-                case '{' : {
+                case '{' : {  // object begin
                     //todo is it necessary to increment tokenStartOffset ? Do we ever use the incremented value?
                     tokenStartOffset++; // jump past token type character
                     pdeWriter.writeObjectBeginPush(lengthLength);
@@ -379,14 +419,13 @@ public class Converter {
 
                     break;
                 }
-                case '}' : {
+                case '}' : {  // object end
                     tokenStartOffset++; // jump past token type character
                     pdeWriter.writeObjectEndPop();
                     this.compositeFieldStackIndex--;
                     break;
                 }
-                //todo figure out how to count the number of rows in the table...
-                case '[' : {
+                case '[' : {  // table begin
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
                     // push a new composite field counter and table column counter on their stacks.
                     this.compositeFieldStackIndex++;
@@ -396,7 +435,7 @@ public class Converter {
                     pdeWriter.writeTableBeginPush(lengthLength);
                     break;
                 }
-                case ']' : {
+                case ']' : {  // table end
                     int tableTokenStartOffset = this.compositeFieldStartIndexStack[this.compositeFieldStackIndex];
                     System.out.println("table token start: " + tableTokenStartOffset);
 
@@ -437,7 +476,7 @@ public class Converter {
                     this.compositeFieldStackIndex--;
                     break;
                 }
-                case '<' : {
+                case '<' : { // metadata begin
                     compositeFieldNestedFieldCountStack[compositeFieldStackIndex]++; // increment number of fields in this composite field scope
                     // push a new composite field counter and table column counter on their stacks.
                     this.compositeFieldStackIndex++;
@@ -449,7 +488,7 @@ public class Converter {
                     pdeWriter.writeMetadataBeginPush(lengthLength);
                     break;
                 }
-                case '>' : {
+                case '>' : { // metadata end
                     tokenStartOffset++; // jump past token type character
                     pdeWriter.writeMetadataEndPop();
 
@@ -462,6 +501,23 @@ public class Converter {
         }
 
         return pdeWriter.offset - destOffsetStart;
+    }
+
+    private static long parseLong(byte[] pdlSource, int tokenStartOffset, int tokenEndOffset) {
+        long value = 0;
+        while(tokenStartOffset < tokenEndOffset){
+            int nextChar = pdlSource[tokenStartOffset++];
+            switch(nextChar) {
+                case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' : {
+                    value = value * 10;
+                    value += nextChar - 48;
+                }
+                default : {
+                    //do nothing - ignore that character - or maybe throw an error saying it is not a valid number ?
+                }
+            }
+        }
+        return value;
     }
 
 
